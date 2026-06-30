@@ -1,0 +1,25 @@
+# Local PostgreSQL for development (mirrors Railway's managed Postgres).
+# Usage:
+#   docker compose up -d
+#   npm run db:deploy && npm run db:seed
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: glow-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: glow
+      POSTGRES_PASSWORD: glow
+      POSTGRES_DB: glow
+    ports:
+      - "5544:5432"
+    volumes:
+      - glow_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U glow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  glow_pgdata:

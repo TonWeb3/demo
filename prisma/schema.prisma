@@ -1,0 +1,206 @@
+// Licensed to Glow — data model (Doc §3 Data layer)
+// Dev uses SQLite for zero-config local runs. For production, swap provider to
+// "postgresql" (e.g. Supabase) and point DATABASE_URL at it — the schema is
+// written to be Postgres-compatible (enums modelled as String for portability).
+
+generator client {
+  provider = "prisma-client-js"
+  // "native" for local dev; the debian target is what Railway's container runs.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Roles: MEMBER | PARTNER | ADMIN
+// Tiers: GLOW | SIGNATURE | BLACK   (Doc §7.9)
+// Categories: SKIN | HAIR | NAILS | BODY | WELLNESS | INJECTABLES | GROOMING
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("MEMBER")
+  city         String   @default("Dubai")
+  avatarUrl    String?
+  // member beauty profile (Doc §7 Onboarding / Profile)
+  goals        String   @default("[]") // JSON array of goal strings
+  budget       String   @default("mid") // low | mid | premium
+  tier         String   @default("GLOW")
+  referralCode String   @unique @default(cuid())
+  referredById String?
+  createdAt    DateTime @default(now())
+
+  membership   Membership?
+  ownedVenues  Venue[]         @relation("VenueOwner")
+  bookings     Booking[]
+  reviews      Review[]
+  stamps       PassportStamp[]
+  favorites    Favorite[]
+  referralsMade Referral[]     @relation("Referrer")
+}
+
+model Plan {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  tier            String   // GLOW | SIGNATURE | BLACK
+  priceMonthly    Int      // in AED
+  creditsPerMonth Int
+  guestPasses     Int      @default(0)
+  perks           String   @default("[]") // JSON array
+  description     String
+  order           Int      @default(0)
+
+  memberships     Membership[]
+}
+
+model Membership {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId           String
+  plan             Plan     @relation(fields: [planId], references: [id])
+  status           String   @default("ACTIVE") // ACTIVE | CANCELED | PAST_DUE
+  creditsRemaining Int
+  savedAmount      Int      @default(0) // AED retail value saved this cycle
+  retailUsed       Int      @default(0) // AED retail value consumed
+  streakWeeks      Int      @default(0)
+  renewalDate      DateTime
+  startedAt        DateTime @default(now())
+  stripeCustomerId String?  // populated when real Stripe is wired
+}
+
+model Venue {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  category     String   // primary category
+  city         String   @default("Dubai")
+  neighbourhood String
+  address      String
+  lat          Float
+  lng          Float
+  rating       Float    @default(0)
+  reviewCount  Int      @default(0)
+  description  String
+  imageUrl     String
+  gallery      String   @default("[]") // JSON array of image paths (Doc §12 photos)
+  videoUrl     String?  // Spotlight video (Doc §7.4)
+  amenities    String   @default("[]") // JSON: parking, female-only, men-friendly, accessible, luxury...
+  isNew        Boolean  @default(false)
+  spotlight    Boolean  @default(false)
+  approved     Boolean  @default(false)
+  ownerId      String?
+  owner        User?    @relation("VenueOwner", fields: [ownerId], references: [id])
+  createdAt    DateTime @default(now())
+
+  services     Service[]
+  bookings     Booking[]
+  reviews      Review[]
+  favorites    Favorite[]
+}
+
+model Service {
+  id            String   @id @default(cuid())
+  venueId       String
+  venue         Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name          String
+  category      String
+  durationMin   Int
+  retailPrice   Int      // AED
+  creditCost    Int      // membership credits required
+  includedInPlan Boolean @default(true)
+  therapistLevel String  @default("Senior") // Junior | Senior | Master
+  description   String
+  imageUrl      String?
+
+  bookings      Booking[]
+  reviews       Review[]
+}
+
+model Booking {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceId     String
+  service       Service  @relation(fields: [serviceId], references: [id])
+  venueId       String
+  venue         Venue    @relation(fields: [venueId], references: [id])
+  date          DateTime
+  status        String   @default("UPCOMING") // UPCOMING | COMPLETED | CANCELED | NO_SHOW
+  creditsUsed   Int
+  retailValue   Int
+  therapistPref String?
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  review        Review?
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  bookingId   String   @unique
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  venueId     String
+  venue       Venue    @relation(fields: [venueId], references: [id])
+  serviceId   String
+  service     Service  @relation(fields: [serviceId], references: [id])
+  rating      Int      // overall 1-5
+  cleanliness Int
+  therapist   Int
+  result      Int
+  ambience    Int
+  value       Int
+  tags        String   @default("[]") // JSON quick tags
+  notes       String?
+  createdAt   DateTime @default(now())
+}
+
+model Favorite {
+  id      String @id @default(cuid())
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venueId String
+  venue   Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, venueId])
+}
+
+// Gimmick 1: The Glow Passport (Doc §10)
+model PassportStamp {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label    String   // e.g. "Marina Facial", "First Hair House"
+  category String
+  earnedAt DateTime @default(now())
+}
+
+// Referral system (Doc §7.8)
+model Referral {
+  id         String   @id @default(cuid())
+  referrerId String
+  referrer   User     @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  code       String
+  friendEmail String
+  status     String   @default("INVITED") // INVITED | JOINED | REWARDED
+  createdAt  DateTime @default(now())
+}
+
+// Editorial: Glow Journal (Doc §9) and The Edit highlights (Doc §7.5)
+model JournalPost {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  excerpt   String
+  body      String
+  category  String
+  imageUrl  String
+  createdAt DateTime @default(now())
+}
