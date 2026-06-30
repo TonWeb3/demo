@@ -9,11 +9,18 @@ const COOKIE = "glow_session";
 
 // AUTH_SECRET must be set in production. A hardcoded fallback would let anyone
 // forge sessions (including admin), so we only allow a dev default off-prod.
-const authSecret = process.env.AUTH_SECRET;
-if (!authSecret && process.env.NODE_ENV === "production") {
-  throw new Error("AUTH_SECRET environment variable is required in production.");
+// Resolved lazily (not at import) so `next build` doesn't require it — the check
+// only fires when a session is actually signed/verified at runtime.
+let cachedSecret: Uint8Array | undefined;
+function getSecret(): Uint8Array {
+  if (cachedSecret) return cachedSecret;
+  const authSecret = process.env.AUTH_SECRET;
+  if (!authSecret && process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_SECRET environment variable is required in production.");
+  }
+  cachedSecret = new TextEncoder().encode(authSecret ?? "glow-dev-secret-change-me");
+  return cachedSecret;
 }
-const secret = new TextEncoder().encode(authSecret ?? "glow-dev-secret-change-me");
 
 export type SessionPayload = {
   uid: string;
@@ -35,7 +42,7 @@ export async function createSession(payload: SessionPayload) {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("30d")
-    .sign(secret);
+    .sign(getSecret());
 
   const jar = await cookies();
   jar.set(COOKIE, token, {
@@ -57,7 +64,7 @@ export async function getSession(): Promise<SessionPayload | null> {
   const token = jar.get(COOKIE)?.value;
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, getSecret());
     return payload as unknown as SessionPayload;
   } catch {
     return null;
