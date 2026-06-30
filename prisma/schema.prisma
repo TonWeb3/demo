@@ -9,8 +9,11 @@ generator client {
   binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
+// SQLite for zero-config deploys (no external database required). The schema is
+// kept Postgres-compatible (enums as strings) — to use a managed Postgres,
+// switch provider to "postgresql" and point DATABASE_URL at it.
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 

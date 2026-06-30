@@ -228,6 +228,15 @@ const JOURNAL = [
 ];
 
 async function main() {
+  // Skip if already seeded (unless FORCE_SEED=1) so restarts don't wipe data.
+  if (process.env.FORCE_SEED !== "1") {
+    const existing = await prisma.plan.count().catch(() => 0);
+    if (existing > 0) {
+      console.log("✅ Database already seeded — skipping. (FORCE_SEED=1 to reseed.)");
+      return;
+    }
+  }
+
   console.log("🌱 Seeding Licensed to Glow…");
 
   await prisma.review.deleteMany();

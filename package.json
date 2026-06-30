@@ -12,10 +12,9 @@
     "start:prod": "node scripts/start.mjs",
     "postinstall": "prisma generate",
     "lint": "eslint",
-    "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy",
+    "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "prisma migrate reset --force && tsx prisma/seed.ts",
+    "db:reset": "prisma db push --force-reset --skip-generate && tsx prisma/seed.ts",
     "db:studio": "prisma studio"
   },
   "prisma": {
