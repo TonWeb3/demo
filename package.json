@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "start:prod": "prisma migrate deploy && next start",
+    "start:prod": "prisma migrate deploy || echo '⚠️  prisma migrate deploy failed — check DATABASE_URL / Postgres plugin'; next start",
     "postinstall": "prisma generate",
     "lint": "eslint",
     "db:migrate": "prisma migrate dev",
