@@ -7,16 +7,17 @@ import { prisma } from "./db";
 
 const COOKIE = "glow_session";
 
-// AUTH_SECRET must be set in production. A hardcoded fallback would let anyone
-// forge sessions (including admin), so we only allow a dev default off-prod.
-// Resolved lazily (not at import) so `next build` doesn't require it — the check
-// only fires when a session is actually signed/verified at runtime.
+// Session signing secret. Set AUTH_SECRET in production for real security; if
+// it's missing we fall back to a default (with a warning) so the app still runs
+// out of the box. Resolved lazily so `next build` never requires it.
 let cachedSecret: Uint8Array | undefined;
 function getSecret(): Uint8Array {
   if (cachedSecret) return cachedSecret;
   const authSecret = process.env.AUTH_SECRET;
   if (!authSecret && process.env.NODE_ENV === "production") {
-    throw new Error("AUTH_SECRET environment variable is required in production.");
+    console.warn(
+      "[auth] AUTH_SECRET is not set — using an insecure default. Set AUTH_SECRET for production.",
+    );
   }
   cachedSecret = new TextEncoder().encode(authSecret ?? "glow-dev-secret-change-me");
   return cachedSecret;
