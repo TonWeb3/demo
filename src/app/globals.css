@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/*
+  Licensed to Glow — brand design tokens (Doc §14)
+  Palette: cream, porcelain, champagne gold, deep espresso, muted sage, soft sand.
+  Type: elegant serif headings, clean sans UI. Calm, premium, editorial.
+*/
+
+:root {
+  --cream: #f7f3ec;
+  --porcelain: #fbfaf7;
+  --sand: #e9e0d2;
+  --champagne: #c8a96a;
+  --champagne-deep: #ad8c4c;
+  --espresso: #2b2118;
+  --espresso-soft: #4a3d30;
+  --sage: #8a9a86;
+  --sage-soft: #aebaa9;
+  --line: #e7ddcd;
+
+  --background: var(--porcelain);
+  --foreground: var(--espresso);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-cream: var(--cream);
+  --color-porcelain: var(--porcelain);
+  --color-sand: var(--sand);
+  --color-champagne: var(--champagne);
+  --color-champagne-deep: var(--champagne-deep);
+  --color-espresso: var(--espresso);
+  --color-espresso-soft: var(--espresso-soft);
+  --color-sage: var(--sage);
+  --color-sage-soft: var(--sage-soft);
+  --color-line: var(--line);
+
+  --font-serif: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+
+  --radius-xl2: 1.25rem;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .font-serif {
+  font-family: var(--font-serif);
+  letter-spacing: -0.01em;
+}
+
+/* calm motion — slow, gentle (Doc §14) */
+@media (prefers-reduced-motion: no-preference) {
+  .fade-up {
+    animation: fadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.gold-rule {
+  background: linear-gradient(90deg, transparent, var(--champagne), transparent);
+  height: 1px;
+}
+
+::selection {
+  background: var(--champagne);
+  color: var(--espresso);
+}
